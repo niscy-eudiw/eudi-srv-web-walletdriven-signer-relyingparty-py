@@ -1,0 +1,271 @@
+{% extends 'base.html' %} {% block content %}
+<div class="title-container">
+  <h1>Sign documents</h1>
+  <p>Select files and configure signing options before proceeding.</p>
+</div>
+
+<div class="w-100" id="options-form">
+  <div class="select-doc-section">
+    <h3>Documents</h3>
+    <div id="docs-button-container" class="docs-button-container"></div>
+    <div class="blue-box" id="document-list-container">
+      <ul class="document-list" id="item-list"></ul>
+    </div>
+  </div>
+
+  <!--Select Signature Options-->
+  <div class="select-doc-section" id="signature-options" hidden>
+    <h3>Options for <span id="selected-document-name"></span></h3>
+    <div class="select-document blue-box">
+      <!-- Preview -->
+      <div class="select-document-column">
+        <div
+          class="preview-area"
+          id="previewArea"
+          style="background-color: white"
+        ></div>
+      </div>
+
+      <!-- Options -->
+      <div class="select-document-column">
+        <div class="options-form-group">
+          <div class="options-step">
+            <div class="step-number">1</div>
+            <div class="step-line"></div>
+          </div>
+          <div class="options-content">
+            <p class="legend" style="margin-bottom: 5px; font-weight: bold">
+              Container
+            </p>
+            <label
+              ><input
+                type="radio"
+                name="container"
+                value="No"
+                onchange="onChangeContainer(this.value)"
+              />No</label
+            >
+            <label
+              ><input
+                type="radio"
+                name="container"
+                value="ASiC-S"
+                onchange="onChangeContainer(this.value)"
+              />ASiC-S</label
+            >
+            <label
+              ><input
+                type="radio"
+                name="container"
+                value="ASiC-E"
+                onchange="onChangeContainer(this.value)"
+              />ASiC-E</label
+            >
+          </div>
+        </div>
+
+        <div class="options-form-group">
+          <div class="options-step">
+            <div class="step-number">2</div>
+            <div class="step-line"></div>
+          </div>
+          <div class="options-content">
+            <p class="legend" style="margin-bottom: 5px; font-weight: bold">
+              Signature Format
+            </p>
+            <label
+              ><input
+                type="radio"
+                id="XAdES"
+                name="signature_format"
+                value="X"
+                onchange="onChangeSignatureFormat(this.value)"
+                required
+              />XAdES</label
+            >
+            <label
+              ><input
+                type="radio"
+                id="CAdES"
+                name="signature_format"
+                value="C"
+                onchange="onChangeSignatureFormat(this.value)"
+              />CAdES</label
+            >
+            <label
+              ><input
+                type="radio"
+                id="PAdES"
+                name="signature_format"
+                value="P"
+                onchange="onChangeSignatureFormat(this.value)"
+              />PAdES</label
+            >
+            <label
+              ><input
+                type="radio"
+                id="JAdES"
+                name="signature_format"
+                value="J"
+                onchange="onChangeSignatureFormat(this.value)"
+              />JAdES</label
+            >
+          </div>
+        </div>
+
+        <div class="options-form-group">
+          <div class="options-step">
+            <div class="step-number">3</div>
+            <div class="step-line"></div>
+          </div>
+          <div class="options-content">
+            <p class="legend" style="margin-bottom: 5px; font-weight: bold">
+              Packaging
+            </p>
+            <label
+              ><input
+                type="radio"
+                id="enveloped"
+                name="packaging"
+                value="ENVELOPED"
+                onchange="saveOption('packaging', this.value)"
+              />Enveloped</label
+            >
+            <label
+              ><input
+                type="radio"
+                id="enveloping"
+                name="packaging"
+                value="ENVELOPING"
+                onchange="saveOption('packaging', this.value)"
+              />Enveloping</label
+            >
+            <label
+              ><input
+                type="radio"
+                id="detached"
+                name="packaging"
+                value="DETACHED"
+                onchange="saveOption('packaging', this.value)"
+              />Detached</label
+            >
+            <label
+              ><input
+                type="radio"
+                id="internally"
+                name="packaging"
+                value="INTERNALLY_DETACHED"
+                onchange="saveOption('packaging', this.value)"
+              />Internally Detached</label
+            >
+          </div>
+        </div>
+
+        <div class="options-form-group">
+          <div class="options-step">
+            <div class="step-number">4</div>
+            <div class="step-line"></div>
+          </div>
+          <div class="options-content">
+            <p class="legend" style="margin-bottom: 5px; font-weight: bold">
+              Level
+            </p>
+            <label
+              ><input
+                type="radio"
+                name="level"
+                value="Ades-B-B"
+                onchange="saveOption('level', this.value)"
+              />BASELINE-B</label
+            >
+            <label
+              ><input
+                type="radio"
+                name="level"
+                value="Ades-B-T"
+                onchange="saveOption('level', this.value)"
+              />BASELINE-T</label
+            >
+            <label
+              ><input
+                type="radio"
+                name="level"
+                value="Ades-B-LT"
+                onchange="saveOption('level', this.value)"
+              />BASELINE-LT</label
+            >
+            <label
+              ><input
+                type="radio"
+                name="level"
+                value="Ades-B-LTA"
+                onchange="saveOption('level', this.value)"
+              />BASELINE-LTA</label
+            >
+          </div>
+        </div>
+
+        <button
+          type="button"
+          id="confirm-btn"
+          class="btn common-btn secondary-btn"
+          style="margin-top: 10px"
+          onclick="confirmDocumentOptions()"
+        >
+          Save Options
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!--Select Digest Algorithm-->
+  <div class="select-doc-section">
+    <h3>Digest Algorithm</h3>
+    <div class="blue-box">
+      {% for algorithm in digest_algorithms %}
+      <label
+        ><input
+          type="radio"
+          name="digest_algorithm"
+          value="{{ algorithm.oid }}"
+          onchange="saveDigestAlgorithm(this.value)"
+        />{{ algorithm.name }}</label
+      >
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="right-side-btn-container" id="submit-btn-container" hidden>
+    <button
+      type="submit"
+      id="submit-btn"
+      class="btn common-btn primary-btn"
+      onclick="handleSubmit()"
+    >
+      Continue
+    </button>
+  </div>
+
+  <div id="toast" class="toast"></div>
+</div>
+<script>
+  window.addEventListener("DOMContentLoaded", () => {
+    const predefinedFiles = {{ received_files | tojson }};
+    const docsButtonsContainer = document.getElementById("docs-button-container");
+
+    predefinedFiles.forEach(file => {
+      const button = document.createElement("button");
+      button.className = "btn secondary-btn";
+      button.textContent = file.name;
+      const byteChars = atob(file.data);
+      const byteArray = new Uint8Array([...byteChars].map(c => c.charCodeAt(0)));
+      const blob = new Blob([byteArray], { type: file.type });
+      // const fileURL = URL.createObjectURL(blob);
+      button.addEventListener("click", () => updateDocumentsList(file.name, file.type, blob));
+      docsButtonsContainer.appendChild(button);
+    });
+  });
+</script>
+<script src="{{ url_for('static', filename='scripts/temp.js') }}"></script>
+
+{% endblock %}
