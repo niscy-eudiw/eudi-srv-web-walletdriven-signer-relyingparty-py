@@ -44,7 +44,7 @@ def sd_retrieval_from_authorization_request(documents_info: list[DocumentsOption
     app.logger.info("Generated the Nonce: "+nonce)
     
     # Generate response_uri
-    response_uri = url_for("wallet.place_signed_document", nonce=nonce, _external=True)
+    response_uri = url_for("wallet.place_signed_document", nonce=nonce, _external=True, _scheme=settings.SERVICE_SCHEME)
     app.logger.info("Retrieved the Response URI value.")
     
     # Get document Digest
@@ -71,7 +71,7 @@ def sd_retrieval_from_authorization_request(documents_info: list[DocumentsOption
         app.logger.error(f"An error was caught while trying to save the Request Object to the Database: {e}.")
         raise Exception("It was impossible to complete the request, as there was an error accessing the database.")
 
-    request_uri = url_for("wallet.retrieve_request_object", nonce=nonce, _external=True)
+    request_uri = url_for("wallet.retrieve_request_object", nonce=nonce, _external=True, _scheme=settings.SERVICE_SCHEME)
     request_uri_url_encoded = quote(request_uri, safe="")
     app.logger.info("Generated the Request Uri Value.")
     

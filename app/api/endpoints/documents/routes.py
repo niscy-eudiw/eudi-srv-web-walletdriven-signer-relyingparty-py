@@ -80,7 +80,7 @@ def start_wallet_interaction(wallet_url: str, scheme: str, version: str, how: st
     for document_options in documents_signature_option:
         document_content = get_document_content(document_options.filename)
         document_options.update_content(content=document_content)
-        url = url_for('documents.serve_docs', filename=document_options.filename, _external=True)
+        url = url_for('documents.serve_docs', filename=document_options.filename, _external=True, _scheme=settings.SERVICE_SCHEME)
         document_options.update_url(url=url)
 
     if version == "etsi119432":
@@ -101,7 +101,7 @@ def start_wallet_interaction(wallet_url: str, scheme: str, version: str, how: st
         raise Exception("Unknown Version")
     app.logger.info(f"Retrieved link to Wallet: {link_to_wallet} with nonce: {nonce}")
     
-    retrieve_signed_document_url = url_for('documents.wait_for_signed_document', nonce=nonce, _external=True)
+    retrieve_signed_document_url = url_for('documents.wait_for_signed_document', nonce=nonce)
     # Render HTML page with QrCode
     qr_img = qrcode.make(link_to_wallet)
     buffer = io.BytesIO()

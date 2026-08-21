@@ -15,7 +15,7 @@ from app.services import keys_service
 
 def get_document_retrieval_params(wallet_url: str, redirect_uri: str, state: str, documents_info: list[DocumentsOptionsToSign]):
     nonce = secrets.token_urlsafe(32)
-    response_uri = url_for("wallet.place_signed_document", nonce=nonce, _external=True)
+    response_uri = url_for("wallet.place_signed_document", nonce=nonce, _external=True, _scheme=settings.SERVICE_SCHEME)
     credential_id = "xyz123"
     client_id = settings.CLIENT_ID_SCHEME+":"+settings.SERVICE_DOMAIN
     request_object = {
@@ -39,7 +39,7 @@ def get_document_retrieval_params(wallet_url: str, redirect_uri: str, state: str
     except ValueError as e:
         raise Exception("It was impossible to complete the request, as there was an error accessing the database.")
 
-    request_uri = url_for("wallet.retrieve_request_object", nonce=nonce, _external=True)
+    request_uri = url_for("wallet.retrieve_request_object", nonce=nonce, _external=True, _scheme=settings.SERVICE_SCHEME)
     request_uri_url_encoded = quote(request_uri, safe="")
 
     link_to_wallet = wallet_url + "?request_uri=" + request_uri_url_encoded + "&client_id=" + client_id
