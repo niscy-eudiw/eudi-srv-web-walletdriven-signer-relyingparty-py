@@ -16,6 +16,8 @@
 ###############################################################################
 
 import os, base64, qrcode, io, mimetypes
+from typing import Optional
+
 from flask import (
     Blueprint, render_template, request, session, send_from_directory, current_app as app, Response, jsonify, url_for,
     json, abort
@@ -107,7 +109,7 @@ def select_signing_options():
 def select_wallet_options():
     return render_template('wallet-select.html')
 
-def start_wallet_interaction(protocol_version: str, request_object_delivery: str | None, wallet_url: str):
+def start_wallet_interaction(protocol_version: str, request_object_delivery: Optional[str], wallet_url: str):
     documents_signature_option = get_session_value(SessionState.DOCUMENTS_OPTIONS_TO_SIGN)
     for document_options in documents_signature_option:
         document_content = get_document_content(document_options.filename)

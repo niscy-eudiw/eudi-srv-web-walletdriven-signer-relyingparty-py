@@ -1,3 +1,6 @@
+from typing import Optional
+
+
 class SigningOptions:
     filename: str
     container: str
@@ -26,9 +29,9 @@ class WalletOptions:
     VALID_AUTHORIZATION_ENDPOINTS = {"eudi-rqes://", "mdoc-openid4vp://"}
 
     protocol_version: str
-    request_object_delivery: str | None
+    request_object_delivery: Optional[str]
     wallet_delivery_method: str
-    authorization_endpoint: str | None
+    authorization_endpoint: Optional[str]
 
     def __init__(self, wallet_delivery_method: str, authorization_endpoint: str, protocol_version: str, request_object_delivery: str):
         self.protocol_version = self._validate_choice(
