@@ -25,6 +25,9 @@ const documentStates = new Map();
   function updateDocumentsList(filename, filetype, file) {
     if (!file) return;
 
+	documentStates.clear();
+	document.getElementById("item-list").innerHTML = "";
+
     let fileURL;
     if (filetype === "application/pdf") {
       fileURL = URL.createObjectURL(
@@ -35,7 +38,7 @@ const documentStates = new Map();
     }
     documentStates.set(filename, {
       ...DEFAULT_OPTIONS,
-      file: null, //file
+      file: null,
       fileURL,
       fileType: filetype,
     });
@@ -289,10 +292,6 @@ const documentStates = new Map();
     const formData = new FormData();
 
     for (const [filename, state] of documentStates.entries()) {
-      const blob = await fetch(state.fileURL).then((r) => r.blob());
-      if (state.file) {
-        formData.append("files", state.file, filename);
-      }
       formData.append(
         "options",
         JSON.stringify({

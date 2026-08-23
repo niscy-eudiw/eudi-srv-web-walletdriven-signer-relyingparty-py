@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.3.0]
+
+_24 Aug 2026_
+
+### Changed:
+
+- Update document retrieval to align with ETSI TS 119 432 v1.3.1.
+
 ## [0.2.0]
 
 _28 May 2025_

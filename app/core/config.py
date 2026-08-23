@@ -55,7 +55,7 @@ class Settings:
     SERVICE_BASE_ENDPOINT: str = os.getenv("SERVICE_BASE_ENDPOINT", "")
     SERVICE_SCHEME: str = os.getenv("SERVICE_SCHEME", "http")
 
-    WALLET_TESTER_URL: str = os.getenv("WALLET_URL")
+    WALLET_TESTER_URL: str = os.getenv("WALLET_TESTER_URL")
     CLIENT_ID_SCHEME: str = "x509_san_dns"
 
 settings = Settings()

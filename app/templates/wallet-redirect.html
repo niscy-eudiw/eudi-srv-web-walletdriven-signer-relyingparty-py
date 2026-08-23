@@ -16,57 +16,30 @@ limitations under the License.
 
 {% extends 'base.html' %} {% block content %}
 <div class="page-centered">
-    <h1>Sign documents</h1>
-    <p>Scan the QrCode to sign the document with the EUDI Wallet</p>
+  <h1>Sign documents</h1>
+  <p>Scan the QrCode to sign the document with the EUDI Wallet</p>
 
-    <div id="redirect-wallet">
-      <div class="col-md-12" style="align-items: center">
-        <img
-          src="{{ qrcode }}"
-          alt="EUDI Wallet"
-          style="width: 200px; height: 200px"
-        />
-      </div>
-      <div class="btn custom-btn">
-        <a
-          href="{{ url }}"
-          target="_blank"
-          style="color: white; text-decoration: none"
-        >
-          <div>
-            <p style="margin-bottom: 0px">Go to EUDI Wallet</p>
-            <p style="margin-bottom: 0px; font-size: 12px">(Same Device)</p>
-          </div>
-        </a>
-      </div>
+  <div id="redirect-wallet">
+    <div class="col-md-12" style="display: flex; flex-direction: column; align-items: center">
+      <img src="{{ qrcode }}" alt="QRCode for Document Retrieval" style="width: 200px; height: 200px"/>
+      <a class="btn primary-btn" href="{{ url }}" target="_blank" style="color: white; text-decoration: none; margin-top: 16px;">
+        <div>
+          <p style="margin-bottom: 0px">Go to EUDI Wallet</p>
+          <p style="margin-bottom: 0px; font-size: 12px">(Same Device)</p>
+        </div>
+      </a>
     </div>
-
     <div id="loading-message" class="alert alert-info" style="margin-top: 20px">
       Waiting for the signed document...
     </div>
-
-    <div
-      id="error-message"
-      class="alert alert-danger"
-      style="display: none; margin-top: 20px"
-    ></div>
-
-    <div
-      id="signed-document-container"
-      class="main-page-box"
-      style="display: none"
-    >
-      <h2>Signed Documents</h2>
-      <div id="signed-documents"></div>
-    </div>
-
-    <a class="sign-custom-btn" href="{{ url_for('index.account') }}">Close</a>
+    <div id="error-message" class="alert alert-danger" style="margin-top: 20px" hidden></div>
   </div>
 </div>
 
 <script>
+  document.addEventListener("DOMContentLoaded", fetchAndUpdatePage);
   const requestUrl = "{{ retrieve_signed_document_url }}";
-  console.log("Polling URL: ", requestUrl);
+  const nonce = "{{ nonce }}";
 
   async function fetchAndUpdatePage() {
     let response_status = 404;
@@ -74,106 +47,28 @@ limitations under the License.
     const timeout = Date.now() + 60 * 10 * 1000; // 10 minutes
 
     while (response_status != 200 && Date.now() < timeout) {
-      const response = await fetch(requestUrl);
-      if (response.status === 200) {
-        response_status = 200;
-        response_json = response.json();
-      } else {
-        console.error(
-          "Signed document not received yet. Waiting for signed document..."
-        );
-        await new Promise((resolve) => setTimeout(resolve, 15000)); // 15s
+  	  try{
+  		  const response = await fetch(requestUrl);
+    	  if (response.status === 200) {
+      		response_status = 200;
+    	  } else {
+      		console.error("Waiting for signed document...");
+      		await new Promise((resolve) => setTimeout(resolve, 15000)); // 15s
+    	  }
+      } catch (err) {
+    	  console.error("Polling error: ", err);
+    	  await new Promise((resolve) => setTimeout(resolve, 15000));
       }
     }
 
     if (response_status != 200) {
-      document.getElementById("loading-message").style.display = "none";
-
-      // Show error message to user
+      document.getElementById("loading-message").hidden=true;
       const errorMessageDiv = document.getElementById("error-message");
-      errorMessageDiv.innerText =
-        "Relying Party Tester timed out while waiting for the signed document from the Wallet.";
-      errorMessageDiv.style.display = "block";
+      errorMessageDiv.innerText = "Relying Party Tester timed out while waiting for the signed document from the Wallet.";
+      errorMessageDiv.hidden=true;
     } else {
-      console.log("Data received: ", response_json);
-      if (response_json.length > 0) {
-        document.getElementById("redirect-wallet").style.display = "none";
-        document.getElementById("loading-message").style.display = "none";
-        document.getElementById("signed-document-container").style.display =
-          "block";
-
-        const docContainer = document.getElementById("signed-documents");
-        docContainer.innerHTML = "";
-
-        response_json.forEach((doc) => {
-          const {
-            document_signed_value,
-            document_content_type,
-            document_filename,
-          } = doc;
-
-          console.log(document_signed_value);
-          console.log(document_content_type);
-          console.log(document_filename);
-
-          let previewHTML = "";
-
-          const blobUrl = base64ToBlobUrl(
-            document_signed_value,
-            document_content_type
-          );
-
-          if (
-            [
-              "text/plain",
-              "application/json",
-              "application/xml",
-              "application/pdf",
-            ].includes(document_content_type)
-          ) {
-            previewHTML = `<iframe frameborder="0" scrolling="auto" height="500px" width="100%" src="${blobUrl}"></iframe>`;
-          } else if (
-            [
-              "application/vnd.etsi.asic-s+zip",
-              "application/vnd.etsi.asic-e+zip",
-            ].includes(document_content_type)
-          ) {
-            previewHTML = `<br /><em>ZIP files cannot be previewed. Please download.</em>`;
-          }
-
-          docContainer.innerHTML += `
-              <div>
-                ${previewHTML}
-                <button class="sign-custom-btn" onclick="downloadDocument('${blobUrl}', document_filename)">
-                  Download
-                </button>
-                <br/><br/>
-              </div>
-            `;
-        });
-      }
+      window.location.href = "{{ url_for('documents.view_signed_document') }}?nonce=" + encodeURIComponent(nonce);
     }
-  }
-
-  window.onload = fetchAndUpdatePage;
-
-  function downloadDocument(blobUrl, document_filename) {
-    const downloadLink = document.createElement("a");
-    downloadLink.href = blobUrl;
-    downloadLink.download = document_filename;
-    downloadLink.click();
-  }
-
-  function base64ToBlobUrl(base64, document_content_type) {
-    const binStr = atob(base64);
-    const len = binStr.length;
-    const arr = new Uint8Array(len);
-    for (let i = 0; i < len; i++) {
-      arr[i] = binStr.charCodeAt(i);
-    }
-    const blob = new Blob([arr], { type: document_content_type });
-    return URL.createObjectURL(blob);
   }
 </script>
-
 {% endblock %}

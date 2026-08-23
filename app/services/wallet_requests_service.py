@@ -74,7 +74,6 @@ def sd_retrieval_from_authorization_request(documents_info: list[DocumentsOption
     request_uri = url_for("wallet.retrieve_request_object", nonce=nonce, _external=True, _scheme=settings.SERVICE_SCHEME)
     request_uri_url_encoded = quote(request_uri, safe="")
     app.logger.info("Generated the Request Uri Value.")
-    
     link_to_wallet = wallet_url+"?request_uri="+request_uri_url_encoded+"&client_id="+client_id
     app.logger.info("Generated the link to wallet: "+link_to_wallet)
 

@@ -38,52 +38,27 @@ def retrieve_request_object(nonce):
 
     return request_object, 200
 
-# Endpoint that allows to save signed documents as a response to signature request
-@wallet_routes.route('/sd/upload/<string:nonce>', methods=['POST'])
-def place_signed_document(nonce):
-    app.logger.info(f"Uploading Signed Data Object for the Request {nonce}.")
-    form = request.form
-
-    if not form:
-        app.logger.error("Error retrieving Signed Data Object: expected to received the signed document as a form.")
-        return jsonify({"error": "Invalid request format"}), 400
-
-    error = form.get("error")
+def _process_signed_data_objects(nonce, error, state, document_with_signature, signature_object):
     if error:
-        app.logger.info("Error: "+error)
-    state = form.get("state")
+        app.logger.info("Error: " + error)
     if state:
-        app.logger.info("State: "+state)
-
+        app.logger.info("State: " + state)
     if not db.exists_request_object_with_request_id(nonce):
         return f"The application has no record of a request associated to {nonce}", 400
 
     signed_data_objects = []
-
-    app.logger.info(f"Document With Signature: {form.get('documentWithSignature')}")
-
-    document_with_signature = retrieve_list_values_from_form_urlencoded(form, "documentWithSignature")
-    docs_signed_short_debug = textwrap.shorten(str(document_with_signature), width=50, placeholder="...")
-    app.logger.info(f"Retrieved the 'document_with_signature': {docs_signed_short_debug}")
     if document_with_signature is not None:
-        app.logger.info("Successfully retrieved 'documentWithSignature'.")
         app.logger.info(f"Retrieved {len(document_with_signature)} signed documents.")
         for doc in document_with_signature:
             if not is_base64(doc):
                 doc = base64.b64encode(doc.encode("utf-8")).decode("ascii")
-            app.logger.info(doc)
             signed_data_objects.append(doc)
         app.logger.info("Successfully uploaded all the signed documents.")
 
-    signature_object = retrieve_list_values_from_form_urlencoded(form, "signatureObject")
-    signature_short_debug = textwrap.shorten(str(signature_object), width=50, placeholder="...")
-    app.logger.info(f"Retrieved the 'signature_object': {signature_short_debug}")
     if signature_object is not None:
-        app.logger.info("Successfully retrieved 'signatureObject'.")
         app.logger.info(f"Retrieved {len(signature_object)} signed documents.")
         for signature in signature_object:
             signed_data_objects.append(signature)
-        app.logger.info("Successfully uploaded all the signed document.")
 
     if signature_object is None and document_with_signature is None:
         if error is None:
@@ -98,6 +73,49 @@ def place_signed_document(nonce):
     except ValueError as e:
         app.logger.error(f"An error was caught while trying to save the signed data objects to the database: {e}.")
         return "It was impossible to upload the signed data objects.", 400
+
+
+
+# Endpoint that allows to save signed documents as a response to signature request
+@wallet_routes.route('/sd/upload/<string:nonce>', methods=['POST'])
+def place_signed_document(nonce):
+    app.logger.info(f"Uploading Signed Data Object (form) for the Request {nonce}.")
+    form = request.form
+    if not form:
+        app.logger.error("Error retrieving Signed Data Object: expected to received the signed document as a form.")
+        return jsonify({"error": "Invalid request format"}), 400
+
+    error = form.get("error")
+    state = form.get("state")
+    document_with_signature = retrieve_list_values_from_form_urlencoded(form, "documentWithSignature")
+    signature_object = retrieve_list_values_from_form_urlencoded(form, "signatureObject")
+    return _process_signed_data_objects(nonce, error, state, document_with_signature, signature_object)
+
+@wallet_routes.route('/sd/upload/json/<string:nonce>', methods=['POST'])
+def place_signed_document_json(nonce):
+    app.logger.info(f"Uploading Signed Data Object (JSON) for the Request {nonce}.")
+
+    if not request.is_json:
+        app.logger.error("Error retrieving Signed Data Object: expected Content-Type application/json")
+        return jsonify({"error":"Invalid request format"}), 400
+
+    data = request.get_json(silent=True)
+    if not data:
+        app.logger.error("Error retrieving Signed Data Object: invalid or empty JSON body.")
+        return jsonify({"error": "Invalid request format"}), 400
+
+    error = data.get("error")
+    state = data.get("state")
+    document_with_signature = data.get("documentWithSignature")
+    signature_object = data.get("signatureObject")
+
+    if document_with_signature is not None and not isinstance(document_with_signature, list):
+        document_with_signature = [document_with_signature]
+    if signature_object is not None and not isinstance(signature_object, list):
+        signature_object = [signature_object]
+
+    return _process_signed_data_objects(nonce, error, state, document_with_signature, signature_object)
+
 
 def is_base64(s: str) -> bool:
     try:

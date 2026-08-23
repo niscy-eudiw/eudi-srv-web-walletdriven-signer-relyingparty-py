@@ -30,7 +30,7 @@ from app.api.endpoints.main.routes import index_routes
 from app.api.endpoints.auth.routes import auth_routes
 from app.api.endpoints.documents.routes import documents_routes
 from app.api.endpoints.wallet.routes import wallet_routes
-from app.api.endpoints.dependencies import page_not_found
+from app.api.endpoints.dependencies import page_not_found, handle_exception
 from app.core.config import settings, validate_settings
 from app.core.logging import configure_logging
 
@@ -70,6 +70,7 @@ def create_app():
     app.register_blueprint(wallet_routes)
     # Register error handlers
     app.register_error_handler(404, page_not_found)
+    app.register_error_handler(500, handle_exception)
     return app
 
 if __name__ == "__main__":

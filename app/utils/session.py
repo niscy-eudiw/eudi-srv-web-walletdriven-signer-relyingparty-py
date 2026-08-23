@@ -40,11 +40,6 @@ def get_session_value(key: str):
     _validate_key(key)
     return session.get(key)
 
-
 def clear_session() -> None:
-    for key in _VALID_KEYS:
-        session.pop(key, None)
-
-def clear_session_ignore_document_retrieval() -> None:
     for key in _VALID_KEYS:
         session.pop(key, None)

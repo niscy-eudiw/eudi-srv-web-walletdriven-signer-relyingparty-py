@@ -1,7 +1,9 @@
 import base64, os
 from app.core.config import settings
+from pathlib import Path
 
-def get_base64_document(filepath: str):
+
+def get_base64_document(filepath: str) -> str:
     base64_document = None
     with open(filepath, 'rb') as document:
         base64_document = base64.b64encode(document.read()).decode("utf-8")
@@ -18,3 +20,10 @@ def get_document_content(filename) -> bytes:
 def add_suffix_to_filename(filename, suffix="_signed"):
     name, ext = os.path.splitext(filename)
     return f"{name}{suffix}{ext}"
+
+def get_path(filename: str):
+    filename = Path(filename).name
+    print(filename)
+    path = Path(settings.SAMPLE_DOCUMENTS_FOLDER) / filename
+    print(path)
+    return path

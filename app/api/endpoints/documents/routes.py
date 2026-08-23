@@ -18,16 +18,17 @@
 import os, base64, qrcode, io, mimetypes
 from flask import (
     Blueprint, render_template, request, session, send_from_directory, current_app as app, Response, jsonify, url_for,
-    json
+    json, abort
 )
 from flask_login import login_required
 from app.core.config import settings
 import app.services.wallet_requests_service as wallet_interaction
 import app.repositories.db as db
 from app.models.session_state import SessionState, DocumentsOptionsToSign
+from app.schemas.routes_schemas import SigningOptions, WalletOptions
 from app.services import documents_retrieval_service
-from app.services.documents_manage_service import get_base64_document, get_document_content, add_suffix_to_filename
-from app.utils.session import remove_session_values, update_session_values, get_session_value
+from app.services.documents_manage_service import get_base64_document, get_document_content, add_suffix_to_filename, get_path
+from app.utils.session import update_session_values, get_session_value, clear_session
 
 documents_routes = Blueprint("documents", __name__, url_prefix=settings.SERVICE_BASE_ENDPOINT +"/document")
 documents_routes.template_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'template/')
@@ -35,72 +36,102 @@ documents_routes.template_folder = os.path.join(os.path.dirname(os.path.abspath(
 @documents_routes.route('/select', methods=['GET'])
 @login_required
 def select_document():
+    clear_session()
     predefined_files = []
-    remove_session_values(SessionState.DOCUMENTS_OPTIONS_TO_SIGN)
-    remove_session_values(SessionState.DIGEST_ALGORITHM_OID)
-    for file in os.listdir(settings.SAMPLE_DOCUMENTS_FOLDER):
-        filepath = os.path.join(settings.SAMPLE_DOCUMENTS_FOLDER, file)
-        data = get_base64_document(filepath)
+
+    try:
+        files = os.listdir(settings.SAMPLE_DOCUMENTS_FOLDER)
+    except OSError as e:
+        app.logger.error(f"Failed to list sample documents folder: {e}")
+        abort(500)
+
+    for file in files:
+        filepath = get_path(file)
+        if not os.path.isfile(filepath):
+            app.logger.error(f"Failed to find document {filepath}")
+            continue
+        try:
+            data = get_base64_document(filepath)
+        except Exception as e:
+            app.logger.error(f"Failed to read {filepath}: {e}")
+            continue
         mimetype, _ = mimetypes.guess_type(file)
         predefined_files.append({"name": file, "data": data, "type": mimetype})
     hash_algos = [{"name": "SHA256", "oid": "2.16.840.1.101.3.4.2.1"}]
     return render_template('document-select.html', digest_algorithms=hash_algos, received_files=predefined_files)
 
-def _get_path(filename: str):
-    from pathlib import Path
-    filename = Path(filename).name
-    path = Path(settings.SAMPLE_DOCUMENTS_FOLDER) / filename
-    full_path = str(os.path.join(settings.SAMPLE_DOCUMENTS_FOLDER, path))
-    return full_path
-
-
 @documents_routes.route('/select', methods=['POST'])
 @login_required
-def check():
+def select_signing_options():
     app.logger.info("Received documents to sign and signing options")
     options = request.form.getlist("options")
-    documents_signature_option = [
-        DocumentsOptionsToSign(_get_path(option["filename"]), option["filename"], option["container"], option["signature_format"], option["packaging"], option["level"])
-        for option_json in options
-        for option in [json.loads(option_json)]
-    ]
+
+    if len(options) != 1:
+        return jsonify({"error": "Currenty only one document can be signed at a time"}, 400)
+
+    if not options:
+        app.logger.error("No signing options provided")
+        abort(500, "No signing options provided")
+
+    documents_signature_option = []
+    for option in options:
+        try:
+            parsed = json.loads(option)
+            signing_options = SigningOptions(**parsed)
+        except Exception as e:
+            app.logger.error(f"Rejected malformed signing options: {e}")
+            abort(500, "Invalid signing options provided")
+
+        documents_signature_option.append(
+            DocumentsOptionsToSign(
+                get_path(signing_options.filename),
+                signing_options.filename,
+                signing_options.container,
+                signing_options.signature_format,
+                signing_options.packaging,
+                signing_options.level
+            )
+        )
     update_session_values(SessionState.DOCUMENTS_OPTIONS_TO_SIGN, documents_signature_option)
-    update_session_values(SessionState.DIGEST_ALGORITHM_OID, request.form.get("digest_algorithm"))
+
+    digest_algorithm = request.form.get("digest_algorithm")
+    if not digest_algorithm:
+        app.logger.error("No digest algorithm provided")
+        abort(500, "No digest algorithm provided")
+    update_session_values(SessionState.DIGEST_ALGORITHM_OID, digest_algorithm)
+
     return jsonify({"status": "ok"}), 200
 
 @documents_routes.route("/sign", methods=['GET'])
 @login_required
-def sca_signature_page():
+def select_wallet_options():
     return render_template('wallet-select.html')
 
-def start_wallet_interaction(wallet_url: str, scheme: str, version: str, how: str):
+def start_wallet_interaction(protocol_version: str, request_object_delivery: str | None, wallet_url: str):
     documents_signature_option = get_session_value(SessionState.DOCUMENTS_OPTIONS_TO_SIGN)
-
-    hash_algorithm_oid = get_session_value(SessionState.DIGEST_ALGORITHM_OID)
     for document_options in documents_signature_option:
         document_content = get_document_content(document_options.filename)
         document_options.update_content(content=document_content)
         url = url_for('documents.serve_docs', filename=document_options.filename, _external=True, _scheme=settings.SERVICE_SCHEME)
         document_options.update_url(url=url)
 
-    if version == "etsi119432":
+    if protocol_version == "etsi119432":
         link_to_wallet, nonce = documents_retrieval_service.get_document_retrieval_params(
             documents_info=documents_signature_option,
             wallet_url=wallet_url,
-            redirect_uri="",
-            state=session.sid
+            state=session.sid,
+            request_object_delivery=request_object_delivery
         )
-    elif version == "previous":
+    else:
+        hash_algorithm_oid = get_session_value(SessionState.DIGEST_ALGORITHM_OID)
         link_to_wallet, nonce = wallet_interaction.sd_retrieval_from_authorization_request(
                 documents_info=documents_signature_option,
                 hash_algorithm_oid=hash_algorithm_oid,
                 wallet_url=wallet_url,
-                client_id_scheme = scheme
+                client_id_scheme = "x509_san_dns"
             )
-    else:
-        raise Exception("Unknown Version")
     app.logger.info(f"Retrieved link to Wallet: {link_to_wallet} with nonce: {nonce}")
-    
+
     retrieve_signed_document_url = url_for('documents.wait_for_signed_document', nonce=nonce)
     # Render HTML page with QrCode
     qr_img = qrcode.make(link_to_wallet)
@@ -108,24 +139,30 @@ def start_wallet_interaction(wallet_url: str, scheme: str, version: str, how: st
     qr_img.save(buffer, format='PNG')
     buffer.seek(0)
     qr_img_base64 = "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode("utf-8")
-    return render_template('wallet-redirect.html', url=link_to_wallet, qrcode=qr_img_base64, retrieve_signed_document_url=retrieve_signed_document_url)
+    return render_template('wallet-redirect.html', url=link_to_wallet, qrcode=qr_img_base64, retrieve_signed_document_url=retrieve_signed_document_url, nonce=nonce)
 
 # Sign with Wallet Tester for development purposes
 @documents_routes.route("/sign/tester", methods=['GET'])
 @login_required
 def sign_with_wallet_tester():
     wallet_url = settings.WALLET_TESTER_URL
-    return start_wallet_interaction(wallet_url, "x509_san_dns", "previous", "")
+    return start_wallet_interaction("previous", None, wallet_url)
 
 @documents_routes.route("/sign", methods=['POST'])
 @login_required
 def sign_with_wallet():
-    options = request.form
-    how = options.get("redirect")
-    endpoint = options.get("endpoint")
-    version = options.get("version")
-    wallet_url = endpoint + settings.SERVICE_DOMAIN
-    return start_wallet_interaction(wallet_url, "x509_san_dns", version, how)
+    try:
+        wallet_options = WalletOptions.from_form(request.form)
+    except ValueError as e:
+        app.logger.error(f"Rejected invalid wallet options: {e}")
+        abort(500, description=str(e))
+
+    if wallet_options.wallet_delivery_method == "redirect":
+        wallet_url = wallet_options.authorization_endpoint + settings.SERVICE_DOMAIN
+    else:
+        wallet_url = settings.SERVICE_SCHEME + "://" + settings.SERVICE_DOMAIN
+    return start_wallet_interaction(wallet_options.protocol_version, wallet_options.request_object_delivery, wallet_url)
+
 
 # Waiting for signed document from Wallet
 @documents_routes.route("/signed", methods=['GET'])
@@ -136,35 +173,39 @@ def wait_for_signed_document():
 
     response = wallet_interaction.retrieve_signed_objects(nonce=nonce)
     if response is not None:
-        signed_document = response
         app.logger.info("Successfully received signed document from Wallet.")
-        form_list = session.get("form_global")
-        data = []
-        for form, doc in zip(form_list, signed_document):
-            filename = form.get("filename")
-            app.logger.info(f"Found the filename to sign {filename} and the expected signed document.")
-
-            container = form.get("container")
-            format = form.get("signature_format")
-            packaging = form.get("packaging")
-            level = form.get("level")
-
-
-            new_name = add_suffix_to_filename(os.path.basename(filename))
-            mime_type, _ = mimetypes.guess_type(filename)
-            info = {
-                'document_signed_value': doc,
-                'document_content_type': mime_type,
-                'document_filename': new_name
-            }
-            data.append(info)
         db.remove_request_object_with_request_id(nonce)
-        remove_session_values("form_global")
-        app.logger.info("Returning signed documents.")
-        return jsonify(data)
+        return jsonify({ "status":"ready"}), 200
     else:
         app.logger.info("Signed document not received yet. Waiting for signed document...")
         return Response("Signed document not received yet.", status=404)
+
+@documents_routes.route("/signed/view", methods=['GET'])
+@login_required
+def view_signed_document():
+    nonce = request.args.get('nonce')
+    if not nonce:
+        return render_template("document-signed-view.html", error = "Missing nonce.", documents=None)
+
+    app.logger.info(f"Loading signed document view for nonce: {nonce}")
+
+    signed_docs = wallet_interaction.retrieve_signed_objects(nonce=nonce)
+    if not signed_docs:
+        return render_template("document-signed-view.html", error = "No signed documents found for this request.", documents=None)
+
+    options = get_session_value(SessionState.DOCUMENTS_OPTIONS_TO_SIGN)
+    data = []
+    opt:DocumentsOptionsToSign
+    for opt, doc in zip(options, signed_docs):
+        filename = opt.filename
+        new_name = add_suffix_to_filename(os.path.basename(filename))
+        mime_type, _ = mimetypes.guess_type(filename)
+        data.append({
+            'document_signed_value': doc,
+            'document_content_type': mime_type,
+            'document_filename': new_name
+        })
+    return render_template("document-signed-view.html", error = None, documents=data)
 
 # Retrieve document with given name
 @documents_routes.route('/<path:filename>', methods=['GET'])
