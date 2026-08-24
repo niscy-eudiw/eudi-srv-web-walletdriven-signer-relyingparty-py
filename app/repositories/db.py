@@ -116,6 +116,18 @@ def add_to_signed_data_object_table(request_id, signed_data_objects, error):
         cursor.close()
         app.logger.info(f"Saved the Signed Data Object in the Database for the request {request_id}.")
 
+def remove_signed_data_object_with_request_id(request_id):
+    connection = get_db_connection()
+    if connection is None:
+        app.logger.error("impossible to use database.")
+        raise ValueError("Impossible to use database.")
+
+    cursor = connection.cursor()
+    app.logger.info("Removing the Signed Data Object from the Database.")
+    cursor.execute(''' DELETE FROM sdo WHERE request_id = %s''', (request_id,))
+    connection.commit()
+    cursor.close()
+
 # The function 'get_signed_data_object_from_db' allows to retrieve the Signed Data Object (signed sample_docs) from the Database.
 # It retrieves the Request Object associated to the 'request_id'
 # It returns an ValueError if a connection to the table defined in the config file can't be established.
@@ -131,9 +143,6 @@ def get_signed_data_object_from_db(request_id):
     
     if data:
         app.logger.info(f"Found {len(data)} Signed Data Object in the Database for the Request {request_id}.")
-        app.logger.info("Removing the Signed Data Object from the Database.")
-        cursor.execute(''' DELETE FROM sdo WHERE request_id = %s''',(request_id,))
-        connection.commit()
         cursor.close()
         return data
     else:

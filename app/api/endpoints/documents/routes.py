@@ -207,6 +207,7 @@ def view_signed_document():
             'document_content_type': mime_type,
             'document_filename': new_name
         })
+    db.remove_signed_data_object_with_request_id(nonce)
     return render_template("document-signed-view.html", error = None, documents=data)
 
 # Retrieve document with given name
