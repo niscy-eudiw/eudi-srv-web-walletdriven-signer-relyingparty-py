@@ -22,82 +22,31 @@ Handles application setup, configuration, and exception handling.
 """
 
 import os, sys
-from logging.config import dictConfig
-
-from flask import Flask, render_template
+from flask import Flask
 from flask_session import Session
 from flask_cors import CORS
-from app.app_config.config import ConfigClass
-from app.model import keys as keys_service
+
+from app.api.endpoints.main.routes import index_routes
+from app.api.endpoints.auth.routes import auth_routes
+from app.api.endpoints.documents.routes import documents_routes
+from app.api.endpoints.wallet.routes import wallet_routes
+from app.api.endpoints.dependencies import page_not_found, handle_exception
+from app.core.config import settings, validate_settings
+from app.core.logging import configure_logging
 
 sys.path.append(os.path.dirname(__file__))
 
-os.makedirs("logs", exist_ok=True)
-ENV = os.getenv("ENV_TYPE", "test")
-dictConfig(
-    {
-        "version": 1,
-        "formatters": {
-            "default": {
-                "format": "%(asctime)s %(levelname)s %(module)s.%(funcName)s:%(lineno)d %(name)s: - %(message)s",
-                "datefmt": "%Y-%m-%d %H:%M:%S",
-            }
-        },
-        "handlers": {
-            "console": {
-                "class": "logging.StreamHandler",
-                "stream": "ext://sys.stdout",
-                "formatter": "default",
-            },
-            "file": {
-                "class": "logging.handlers.TimedRotatingFileHandler",
-                "filename": "logs/walletdriven_rp_logs.log",
-                "when": "D",
-                "interval": 7, # a new file for every week
-                "backupCount": 5, # the number of files that will be retained on the disk
-                "formatter": "default",
-            },
-        },
-        "root": {
-            "level": "DEBUG" if ENV != "dev" else "INFO",
-            "handlers": ["console"] if ENV != "dev" else ["file"],
-        },
-    }
-)
-
-def handle_exception():
-    return (
-        render_template(
-            "500.html",
-            error="Sorry, an internal server error has occurred. Our team has been notified and is working to resolve the issue. Please try again later.",
-            error_code="Internal Server Error",
-        ),
-        500,
-    )
-
-def page_not_found(e):
-    return (
-        render_template(
-            "500.html",
-            error_code="Page not found",
-            error="Page not found.We're sorry, we couldn't find the page you requested.",
-        ),
-        404,
-    )
-
 def create_app():
-    required_certificate = os.path.join(os.getcwd(), ConfigClass.jwt_certificate_path)
-    required_key = os.path.join(os.getcwd(), ConfigClass.jwt_private_key_path)
-    required_certificate_ca = os.path.join(os.getcwd(), ConfigClass.jwt_ca_certificate_path)
-    if not os.path.exists(required_certificate):
-        raise FileNotFoundError(f"Critical Error: Required file not found at '{required_certificate}'")
-    if not os.path.exists(required_key):
-        raise FileNotFoundError(f"Critical Error: Required file not found at '{required_key}'")
-    if not os.path.exists(required_certificate_ca):
-        raise FileNotFoundError(f"Critical Error: Required file not found at '{required_certificate_ca}'")
+    configure_logging()
+    validate_settings(settings)
 
-    app = Flask(__name__, instance_relative_config=True, static_url_path='/rp/static')
-    app.config['SECRET_KEY'] = ConfigClass.secret_key
+    app = Flask(
+        __name__,
+        instance_relative_config=True,
+        static_url_path='/rp/static'
+    )
+    app.config.from_object(settings)
+
 
     # Initialize LoginManager
     from flask_login import LoginManager
@@ -107,34 +56,23 @@ def create_app():
 
     @login_manager.user_loader
     def load_user(user_id):
-        from model.user import User
-        from model.user_service import UserService
+        from models.user import User
+        from app.services.user_service import UserService
         return User(user_id) if any(user['username'] == user_id for user in UserService.get_users()) else None
 
-    # Register error handlers
-    app.register_error_handler(404, page_not_found)
+    Session(app)
+    CORS(app, supports_credentials=True)
 
     # Register routes
-    from . import (routes)
-    app.register_blueprint(routes.rp)
-    import model.main.routes as main_routes
-    app.register_blueprint(main_routes.base)
-    import model.authentication.routes as authentication_routes
-    app.register_blueprint(authentication_routes.auth)
-    import model.wallet.routes as wallet_interaction_routes
-    app.register_blueprint(wallet_interaction_routes.wallet)
-
-    # Configure session    
-    app.config["SESSION_TYPE"] = "filesystem"
-    app.config["SESSION_FILE_THRESHOLD"] = 50
-    app.config["SESSION_PERMANENT"] = False
-    app.config['SESSION_USE_SIGNER'] = True
-    app.config['SESSION_KEY_PREFIX'] = 'wallet-driven-session:'
-    app.config['SESSION_COOKIE_NAME'] = "rp-portal-session"
-    app.config['SESSION_COOKIE_PATH'] = '/rp'
-    app.config.update(SESSION_COOKIE_SAMESITE="None", SESSION_COOKIE_SECURE=True)
-    Session(app)
-
-    # Configure CORS
-    CORS(app, supports_credentials=True)
+    app.register_blueprint(index_routes)
+    app.register_blueprint(auth_routes)
+    app.register_blueprint(documents_routes)
+    app.register_blueprint(wallet_routes)
+    # Register error handlers
+    app.register_error_handler(404, page_not_found)
+    app.register_error_handler(500, handle_exception)
     return app
+
+if __name__ == "__main__":
+    app = create_app()
+    app.run()

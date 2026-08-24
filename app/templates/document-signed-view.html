@@ -1,0 +1,76 @@
+<!--
+Copyright 2025 European Commission
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+     https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+{% extends 'base.html' %} {% block content %}
+<div class="page-centered">
+  <h1>Signed Documents</h1>
+  {% if error %}
+    <div class="alert alert-danger" style="margin-top: 20px" > {{ error }}</div>
+  {% else %}
+  <div id="signed-document-container" class="main-page-box">
+    <div id="signed-documents" data-documents="{{ documents | tojson | forceescape }}"></div>
+  </div>
+  {% endif %}
+  <a class="btn secondary-btn" href="{{ url_for('index.account') }}">Close</a>
+</div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const docContainer = document.getElementById("signed-documents");
+    if (!docContainer) return;
+    const documents = JSON.parse(docContainer.dataset.documents);
+
+    documents.forEach((doc) => {
+      const { document_signed_value, document_content_type, document_filename } = doc;
+		  const blobUrl = base64ToBlobUrl(document_signed_value, document_content_type);
+      const wrapper = document.createElement("div");
+
+      if (["text/plain", "application/json", "application/xml", "application/pdf"].includes(document_content_type)) {
+        const iframe = document.createElement("iframe");
+        Object.assign(iframe, {frameBorder: "0", scrolling: "auto", height: "500px", width: "100%", src:blobUrl});
+        wrapper.appendChild(iframe);
+      } else if (["application/vnd.etsi.asic-s+zip", "application/vnd.etsi.asic-e+zip"].includes(document_content_type)) {
+        wrapper.interHTML = "<br /><em>ZIP files cannot be previewed. Please download.</em>";
+      }
+
+      const downloadBtn = document.createElement("button");
+      downloadBtn.className="btn secondary-btn";
+      downloadBtn.textContent="Download";
+      downloadBtn.addEventListener("click", () => downloadDocument(blobUrl, document_filename))
+      wrapper.appendChild(downloadBtn);
+      docContainer.appendChild(wrapper);
+    });
+  });
+
+  function downloadDocument(blobUrl, document_filename) {
+    const downloadLink = document.createElement("a");
+    downloadLink.href = blobUrl;
+    downloadLink.download = document_filename;
+    downloadLink.click();
+  }
+
+  function base64ToBlobUrl(base64, document_content_type) {
+    const binStr = atob(base64);
+    const len = binStr.length;
+    const arr = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      arr[i] = binStr.charCodeAt(i);
+    }
+    const blob = new Blob([arr], { type: document_content_type });
+    return URL.createObjectURL(blob);
+  }
+</script>
+{% endblock %}

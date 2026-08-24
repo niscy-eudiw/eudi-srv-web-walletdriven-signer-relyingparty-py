@@ -1,0 +1,136 @@
+<!--
+Copyright 2025 European Commission
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+     https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+
+{% extends 'base.html' %} {% block content %}
+<div class="title-container">
+  <h1>Sign documents</h1>
+  <p>Select how you wish to receive the document to sign before proceeding.</p>
+
+  <form style="margin-bottom: 10px" action="{{ url_for('documents.sign_with_wallet') }}" method="POST">
+    <div class="options-form-group">
+      <div class="options-step">
+        <div class="step-number">1</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="options-content">
+        <p class="legend">Which version of the protocol do you wish to use?</p>
+        <label><input
+            type="radio"
+            name="protocol_version"
+            value="previous"
+            onchange="toggleReqObjDeliveryStep(this)"
+            checked
+        /> Previous Version</label>
+        <label><input
+            type="radio"
+            name="protocol_version"
+            value="etsi119432"
+            onchange="toggleReqObjDeliveryStep(this)"
+        /> ETSI TS 119 432 v1.3.1</label>
+      </div>
+    </div>
+    <div class="options-form-group" id="request_object_delivery_step" hidden>
+      <div class="options-step">
+        <div class="step-number">1.1</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="options-content">
+        <p class="legend">How do you wish to receive the request object?</p>
+        <label><input
+            type="radio"
+            name="request_object_delivery"
+            value="request_uri"
+            checked
+        /> Request URI where the EUDI Wallet can retrieve the request object</label>
+        <label><input
+            type="radio"
+            name="request_object_delivery"
+            value="link"
+            disabled
+        /> Request object is sent in the link to the EUDI Wallet </label>
+      </div>
+    </div>
+
+    <div class="options-form-group">
+      <div class="options-step">
+        <div class="step-number">2</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="options-content">
+        <p class="legend">How should the request object be sent to the EUDI Wallet?</p>
+        <label><input
+            type="radio"
+            name="wallet_delivery_method"
+            value="request"
+            onchange="toggleEndpointStep(this)"
+            checked
+        /> QR code containing a link where the request object can be retrieved</label>
+        <label><input
+            type="radio"
+            name="wallet_delivery_method"
+            value="redirect"
+            onchange="toggleEndpointStep(this)"
+        /> QR code that redirects to the EUDI Wallet, where the request object will be received</label>
+      </div>
+    </div>
+
+    <div class="options-form-group" id="authorization_endpoint_step" hidden>
+      <div class="options-step">
+        <div class="step-number">2.1</div>
+        <div class="step-line"></div>
+      </div>
+      <div class="options-content">
+        <p class="legend">Which authorization endpoint do you wish to use?</p>
+        <label><input
+            type="radio"
+            name="authorization_endpoint"
+            value="eudi-rqes://"
+            checked
+        /> eudi-rqes://</label>
+        <label><input
+            type="radio"
+            name="authorization_endpoint"
+            value="mdoc-openid4vp://"
+        /> mdoc-openid4vp://</label>
+      </div>
+    </div>
+    <button style="margin-top:10px;" class="btn primary-btn" type="submit">Continue</button>
+  </form>
+
+  <p>If you wish to test with a web service that implements a similar behavior to the EUDI Wallet, for development, use this <a href="{{ url_for('documents.sign_with_wallet_tester') }}" class="tester-button">link</a></p>
+</div>
+<script>
+  function toggleEndpointStep(input) {
+    const endpointStep = document.getElementById("authorization_endpoint_step");
+    const show = input.value === "redirect";
+    endpointStep.hidden = !show;
+    endpointStep.querySelectorAll('input[name="authorization_endpoint"]').forEach((el) => { el.disabled = !show });
+  }
+
+  function toggleReqObjDeliveryStep(input) {
+    const reqObjDeliveryStep = document.getElementById("request_object_delivery_step");
+    const show = input.value === "etsi119432";
+    reqObjDeliveryStep.hidden = !show;
+    reqObjDeliveryStep.querySelectorAll('input[name="request_object_delivery"]').forEach((el) => { el.disabled = !show });
+  }
+
+
+</script>
+<style>
+  .legend { margin-bottom: 5px; font-weight: bold; }
+</style>
+
+{% endblock %}
