@@ -22,7 +22,7 @@ limitations under the License.
   <div id="redirect-wallet">
     <div class="col-md-12" style="display: flex; flex-direction: column; align-items: center">
       <img src="{{ qrcode }}" alt="QRCode for Document Retrieval" style="width: 200px; height: 200px"/>
-      <a class="btn primary-btn" href="{{ url }}" target="_blank" style="color: white; text-decoration: none; margin-top: 16px;">
+      <a class="btn primary-btn" href="{{ wallet_url }}" target="_blank" style="color: white; text-decoration: none; margin-top: 16px;">
         <div>
           <p style="margin-bottom: 0px">Go to EUDI Wallet</p>
           <p style="margin-bottom: 0px; font-size: 12px">(Same Device)</p>
@@ -38,8 +38,7 @@ limitations under the License.
 
 <script>
   document.addEventListener("DOMContentLoaded", fetchAndUpdatePage);
-  const requestUrl = "{{ retrieve_signed_document_url }}";
-  const nonce = "{{ nonce }}";
+  const requestUrl = "{{ url_for('documents.wait_for_signed_document') }}";
 
   async function fetchAndUpdatePage() {
     let response_status = 404;
@@ -67,7 +66,7 @@ limitations under the License.
       errorMessageDiv.innerText = "Relying Party Tester timed out while waiting for the signed document from the Wallet.";
       errorMessageDiv.hidden=true;
     } else {
-      window.location.href = "{{ url_for('documents.view_signed_document') }}?nonce=" + encodeURIComponent(nonce);
+      window.location.href = "{{ url_for('documents.view_signed_document') }}";
     }
   }
 </script>

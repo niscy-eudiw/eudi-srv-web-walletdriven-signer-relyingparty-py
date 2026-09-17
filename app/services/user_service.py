@@ -31,7 +31,6 @@ users = [
 
 
 class UserService:
-    # returns the user logged in if successful
     @staticmethod
     def login(username, password):        
         for user in users:

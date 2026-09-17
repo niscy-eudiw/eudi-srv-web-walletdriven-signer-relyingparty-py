@@ -33,6 +33,9 @@ from app.api.endpoints.wallet.routes import wallet_routes
 from app.api.endpoints.dependencies import page_not_found, handle_exception
 from app.core.config import settings, validate_settings
 from app.core.logging import configure_logging
+from app.repositories.db import init_db_schema_flags
+from app.services.key_service import init_jwt_key_material
+from app.utils.cleanup import CleanupThread
 
 sys.path.append(os.path.dirname(__file__))
 
@@ -71,6 +74,15 @@ def create_app():
     # Register error handlers
     app.register_error_handler(404, page_not_found)
     app.register_error_handler(500, handle_exception)
+
+    cleanup_thread = CleanupThread(app, max_age_seconds=settings.DB_ENTRY_MAX_AGE_SECONDS)
+    cleanup_thread.start()
+    app.cleanup_thread = cleanup_thread
+
+    with app.app_context():
+        init_jwt_key_material()
+        init_db_schema_flags()
+
     return app
 
 if __name__ == "__main__":

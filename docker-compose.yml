@@ -1,12 +1,39 @@
 services:
+  db:
+    image: mariadb:11
+    container_name: ${DB_NAME}_db
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      MARIADB_DATABASE: ${DB_NAME}
+      MARIADB_USER: ${DB_USER}
+      MARIADB_PASSWORD: ${DB_PASSWORD}
+      MARIADB_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./tools/:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   walletdriven_relyingparty:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: walletdriven_relyingparty
+    depends_on:
+      db:
+        condition: service_healthy
     ports:
       - "5001:5001"
     env_file:
       - .env
     volumes:
-      - {PATH_TO_JWT_CERTIFICATE_FOLDER}:{PATH_TO_JWT_CERTIFCATE_FOLDER_IN_CONTAINER}
+      - {PATH_TO_JWT_CERTIFICATE_FOLDER}:/app/certificates
+      - ./sample_docs:/app/sample_docs
+      - ./logs:/app/logs
+volumes:
+  db_data:
