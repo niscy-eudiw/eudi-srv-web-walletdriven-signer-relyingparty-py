@@ -19,6 +19,7 @@ from flask import (Blueprint, request, current_app as app, jsonify)
 
 from app.core.config import settings
 from app.repositories import db
+from app.services.log_service import add_logs
 from app.services.signature_request_service import retrieve_request_object_with_document_signing_request
 
 wallet_routes = Blueprint("wallet", __name__, url_prefix=settings.SERVICE_BASE_ENDPOINT +"/wallet")
@@ -51,8 +52,10 @@ def retrieve_request_object(nonce):
 
     request_object = retrieve_request_object_with_document_signing_request(nonce)
     if request_object is None:
+        add_logs(nonce, "Request Object requested by Wallet was not found.")
         return jsonify({"error": "Request Object with document signing request not found."}), 404
 
+    add_logs(nonce, "Wallet retrieved Request Object.")
     return request_object, 200
 
 def _process_signed_data_objects(nonce, error, state, document_with_signature, signature_object):
@@ -82,6 +85,7 @@ def _process_signed_data_objects(nonce, error, state, document_with_signature, s
     try:
         db.add_to_signed_data_object_table(nonce, signed_data_objects, error)
         db.remove_request_object_with_request_id(nonce)
+        add_logs(nonce, "Document signed by Wallet received")
         return "OK", 200
     except ValueError as e:
         app.logger.error(f"An error was caught while trying to save the signed data objects to the database: {e}.")

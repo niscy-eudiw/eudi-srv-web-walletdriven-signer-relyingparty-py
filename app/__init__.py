@@ -26,6 +26,7 @@ from flask import Flask
 from flask_session import Session
 from flask_cors import CORS
 
+from app.api.endpoints.itb.routes import tests_routes
 from app.api.endpoints.main.routes import index_routes
 from app.api.endpoints.auth.routes import auth_routes
 from app.api.endpoints.documents.routes import documents_routes
@@ -71,6 +72,7 @@ def create_app():
     app.register_blueprint(auth_routes)
     app.register_blueprint(documents_routes)
     app.register_blueprint(wallet_routes)
+    app.register_blueprint(tests_routes)
     # Register error handlers
     app.register_error_handler(404, page_not_found)
     app.register_error_handler(500, handle_exception)
