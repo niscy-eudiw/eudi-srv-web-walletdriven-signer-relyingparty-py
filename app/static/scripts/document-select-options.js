@@ -1,11 +1,6 @@
 const documentStates = new Map();
   let selectedDocument = null;
 
-  let digest_algorithm = null;
-  function saveDigestAlgorithm(value) {
-    digest_algorithm = value;
-  }
-
   const DEFAULT_OPTIONS = {
     container: "No",
     signature_format: null,
@@ -303,8 +298,6 @@ const documentStates = new Map();
         }),
       );
     }
-
-    formData.append("digest_algorithm", digest_algorithm);
 
     try {
       const response = await fetch("/rp/document/select", {

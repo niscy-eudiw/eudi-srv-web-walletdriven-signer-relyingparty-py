@@ -16,6 +16,7 @@
 #
 ###############################################################################
 import os
+from datetime import timedelta
 from typing import Optional
 
 """
@@ -33,7 +34,7 @@ class Settings:
     SESSION_KEY_PREFIX: str = "wallet-driven-session:"
     SESSION_COOKIE_NAME: str = "relying-party-session"
     SESSION_COOKIE_PATH: str = "/rp"
-    SESSION_COOKIE_SAMESITE: Optional[str] = None
+    SESSION_COOKIE_SAMESITE: Optional[str] = "Lax"
     SESSION_COOKIE_SECURE: bool = True
 
     SAMPLE_DOCUMENTS_FOLDER: str = os.getenv("SAMPLE_DOCUMENTS_FOLDER", 'sample_docs')
@@ -44,30 +45,47 @@ class Settings:
     DB_NAME: str = os.getenv("DB_NAME")
     DB_USER: str = os.getenv("DB_USER")
     DB_PASSWORD: str = os.getenv("DB_PASSWORD")
+    DB_ENTRY_MAX_AGE_SECONDS: str = os.getenv("DB_ENTRY_MAX_AGE_SECONDS")
 
-    JWT_PRIVATE_KEY_PATH: str = os.getenv("JWT_PRIVATE_KEY_PATH")
-    JWT_PRIVATE_KEY_PASSWORD: str = os.getenv("JWT_PRIVATE_KEY_PASSWORD")
-    JWT_CERTIFICATE_PATH: str = os.getenv("JWT_CERTIFICATE_PATH")
-    JWT_CA_CERTIFICATE_PATH: str = os.getenv("JWT_CA_CERTIFICATE_PATH")
+    ACCESS_CERTIFICATE_KEY_SOURCE: str = os.getenv("ACCESS_CERTIFICATE_KEY_SOURCE", "pem")
+    # Used when ACCESS_CERTIFICATE_KEY_SOURCE == "pem" (separate files)
+    ACCESS_CERTIFICATE_PRIVATE_KEY_PATH: str = os.getenv("ACCESS_CERTIFICATE_PRIVATE_KEY_PATH")
+    ACCESS_CERTIFICATE_PATH: str = os.getenv("ACCESS_CERTIFICATE_PATH")
+    ACCESS_CERTIFICATE_CA_PATH: str = os.getenv("ACCESS_CERTIFICATE_CA_PATH")
+    # Used when ACCESS_CERTIFICATE_KEY_SOURCE == "p12" (bundled files)
+    ACCESS_CERTIFICATE_P12_PATH: str = os.getenv("ACCESS_CERTIFICATE_P12_PATH")
+    # Shared: p12 or pem
+    ACCESS_CERTIFICATE_PRIVATE_KEY_PASSWORD: str = os.getenv("ACCESS_CERTIFICATE_PRIVATE_KEY_PASSWORD", None)
     JWT_ALGORITHM: str = os.getenv("JWT_ALGORITHM", "ES256")
+    REGISTRATION_CERTIFICATE: str = os.getenv("REGISTRATION_CERTIFICATE", None)
 
     SERVICE_DOMAIN: str = os.getenv("SERVICE_DOMAIN")
     SERVICE_BASE_ENDPOINT: str = os.getenv("SERVICE_BASE_ENDPOINT", "")
     SERVICE_SCHEME: str = os.getenv("SERVICE_SCHEME", "http")
 
     WALLET_TESTER_URL: str = os.getenv("WALLET_TESTER_URL")
-    CLIENT_ID_SCHEME: str = "x509_san_dns"
+    CLIENT_ID_PREFIX: str = "x509_hash"
 
 settings = Settings()
 
 def validate_settings(settings):
-    required_files = {
-        "JWT_PRIVATE_KEY_PATH": settings.JWT_PRIVATE_KEY_PATH,
-        "JWT_CERTIFICATE_PATH": settings.JWT_CERTIFICATE_PATH,
-        "JWT_CA_CERTIFICATE_PATH": settings.JWT_CA_CERTIFICATE_PATH,
+    if settings.ACCESS_CERTIFICATE_KEY_SOURCE == "p12":
+        required_files = {
+            "ACCESS_CERTIFICATE_P12_PATH": settings.ACCESS_CERTIFICATE_P12_PATH
+        }
+    elif settings.ACCESS_CERTIFICATE_KEY_SOURCE == "pem":
+        required_files = {
+            "ACCESS_CERTIFICATE_PRIVATE_KEY_PATH": settings.ACCESS_CERTIFICATE_PRIVATE_KEY_PATH,
+            "ACCESS_CERTIFICATE_PATH": settings.ACCESS_CERTIFICATE_PATH,
+            "ACCESS_CERTIFICATE_CA_PATH": settings.ACCESS_CERTIFICATE_CA_PATH,
+        }
+    else:
+        raise ValueError(f"Critical Error: Unsupported ACCESS_CERTIFICATE_KEY_SOURCE: {settings.ACCESS_CERTIFICATE_KEY_SOURCE}")
+
+    required_files.update({
         "SAMPLE_DOCUMENTS_FOLDER": settings.SAMPLE_DOCUMENTS_FOLDER,
         "LOGS_FOLDER": settings.LOGS_FOLDER,
-    }
+    })
 
     for name, path in required_files.items():
         if not path:

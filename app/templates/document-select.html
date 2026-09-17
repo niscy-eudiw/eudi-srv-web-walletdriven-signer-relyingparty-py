@@ -218,23 +218,6 @@
     </div>
   </div>
 
-  <!--Select Digest Algorithm-->
-  <div class="select-doc-section">
-    <h3>Digest Algorithm</h3>
-    <div class="blue-box">
-      {% for algorithm in digest_algorithms %}
-      <label
-        ><input
-          type="radio"
-          name="digest_algorithm"
-          value="{{ algorithm.oid }}"
-          onchange="saveDigestAlgorithm(this.value)"
-        />{{ algorithm.name }}</label
-      >
-      {% endfor %}
-    </div>
-  </div>
-
   <div class="right-side-btn-container" id="submit-btn-container" hidden>
     <button
       type="submit"
