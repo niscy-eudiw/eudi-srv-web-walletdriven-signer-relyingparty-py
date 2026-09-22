@@ -67,7 +67,7 @@ def _get_jar_from_request_object(request_object: dict) -> str:
     ca_certificate = get_jwt_ca_certificate()
     if ca_certificate:
         certificate_chain.append(ca_certificate)
-    headers = {"x5c":certificate_chain, "typ": "application/oauth-authz-req+jwt"}
+    headers = {"x5c":certificate_chain}
     token = jwt.encode(request_object, private_key, algorithm=settings.JWT_ALGORITHM, headers=headers)
     app.logger.info("Generated a JWT with the Request Object.")
     return token
