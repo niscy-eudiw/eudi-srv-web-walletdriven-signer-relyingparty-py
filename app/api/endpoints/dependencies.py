@@ -14,11 +14,15 @@
 # limitations under the License.
 #
 ###############################################################################
+import functools
 
+from flask import render_template, current_app as app, jsonify
 
-from flask import render_template
+from app.services.log_service import add_error_log
+
 
 def handle_exception(e):
+    app.logger.error(f"Bad request: {e}")
     return (
         render_template(
             "error.html",
@@ -29,6 +33,7 @@ def handle_exception(e):
     )
 
 def page_not_found(e):
+    app.logger.error(f"Page not found: {e}")
     return (
         render_template(
             "error.html",
@@ -37,3 +42,18 @@ def page_not_found(e):
         ),
         404,
     )
+
+def with_error_logging(failure_message: str):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                nonce = kwargs.get("nonce")
+                if nonce:
+                    add_error_log(nonce, failure_message)
+                app.logger.error(failure_message)
+                return jsonify({"error": failure_message}), 500
+        return wrapper
+    return decorator

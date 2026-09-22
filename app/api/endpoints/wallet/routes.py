@@ -17,9 +17,10 @@
 import base64, json, os, re
 from flask import (Blueprint, request, current_app as app, jsonify)
 
+from app.api.endpoints.dependencies import with_error_logging
 from app.core.config import settings
 from app.repositories import db
-from app.services.log_service import add_logs
+from app.services.log_service import add_info_log, add_error_log
 from app.services.signature_request_service import retrieve_request_object_with_document_signing_request
 
 wallet_routes = Blueprint("wallet", __name__, url_prefix=settings.SERVICE_BASE_ENDPOINT +"/wallet")
@@ -52,10 +53,10 @@ def retrieve_request_object(nonce):
 
     request_object = retrieve_request_object_with_document_signing_request(nonce)
     if request_object is None:
-        add_logs(nonce, "Request Object requested by Wallet was not found.")
+        add_error_log(nonce, "Request Object requested by Wallet was not found.")
         return jsonify({"error": "Request Object with document signing request not found."}), 404
 
-    add_logs(nonce, "Wallet retrieved Request Object.")
+    add_info_log(nonce, "Wallet retrieved Request Object.")
     return request_object, 200
 
 def _process_signed_data_objects(nonce, error, state, document_with_signature, signature_object):
@@ -71,6 +72,7 @@ def _process_signed_data_objects(nonce, error, state, document_with_signature, s
     if signature_object is None and document_with_signature is None:
         error = error or "Upload of the Signed Data Objects failed."
         db.add_to_signed_data_object_table(nonce, None, error)
+        add_error_log(nonce, "Failed to retrieved signed document from request.")
         return "It was impossible to upload the signed data objects.", 400
 
     signed_data_objects = []
@@ -85,7 +87,7 @@ def _process_signed_data_objects(nonce, error, state, document_with_signature, s
     try:
         db.add_to_signed_data_object_table(nonce, signed_data_objects, error)
         db.remove_request_object_with_request_id(nonce)
-        add_logs(nonce, "Document signed by Wallet received")
+        add_info_log(nonce, "Document signed by Wallet received")
         return "OK", 200
     except ValueError as e:
         app.logger.error(f"An error was caught while trying to save the signed data objects to the database: {e}.")
@@ -104,7 +106,8 @@ def place_signed_document(nonce):
 
     form = request.form
     if not form:
-        app.logger.error("Error retrieving Signed Data Object for {nonce}: expected to received the signed document as a form.")
+        app.logger.error(f"Error uploading Signed Data Object for {nonce}: expected to received the signed document as a form.")
+        add_error_log(nonce, "Failed to upload signed document.")
         return jsonify({"error": "Invalid request format"}), 400
 
     error = form.get("error")
@@ -120,7 +123,8 @@ def place_signed_document_json(nonce):
     app.logger.info(f"Uploading Signed Data Object (JSON) for the Request {nonce}.")
 
     if not request.is_json:
-        app.logger.error("Rejected signed document upload for {nonce}: expected Content-Type application/json.")
+        app.logger.error(f"Rejected signed document upload for {nonce}: expected Content-Type application/json.")
+        add_error_log(nonce, "Failed to upload signed document.")
         return jsonify({"error":"Invalid request format"}), 400
 
     data = request.get_json(silent=True)

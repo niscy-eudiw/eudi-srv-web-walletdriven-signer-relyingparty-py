@@ -76,6 +76,7 @@ def create_app():
     # Register error handlers
     app.register_error_handler(404, page_not_found)
     app.register_error_handler(500, handle_exception)
+    app.register_error_handler(400, handle_exception)
 
     cleanup_thread = CleanupThread(app, max_age_seconds=settings.DB_ENTRY_MAX_AGE_SECONDS)
     cleanup_thread.start()

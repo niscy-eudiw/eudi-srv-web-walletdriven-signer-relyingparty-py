@@ -11,6 +11,8 @@ from app.protocols.potential import SdAuthorizationRequestBuilder
 from app.repositories import db
 from app.repositories.db import get_signed_data_object_from_db, get_request_object_from_db
 from app.services.key_service import get_jwt_private_key, get_jwt_certificate, get_jwt_ca_certificate
+from app.services.log_service import add_error_log
+
 
 def create_document_signing_request(protocol_version: str, request_object_delivery: Optional[str], wallet_url: str, documents: list[DocumentSigningOptions]):
     link_to_wallet, nonce = _get_document_retrieval_params(
@@ -45,7 +47,8 @@ def _get_request_builder(protocol_version: str, nonce: str, documents: list[Docu
     }
     builder = request_builders.get(protocol_version)
     if builder is None:
-        raise ValueError(f"Unsupported protocol_version: {protocol_version!r}")
+        app.logger.error(f"There was an error setting up the request for document signing: Unsupported protocol_version {protocol_version!r}.")
+        raise ValueError(f"Unsupported protocol_version.")
     return builder
 
 def _build_request_uri_link(wallet_url: str, nonce: str, request_object: dict, client_id: str) -> str:
@@ -83,21 +86,19 @@ def _get_qr_code_base64(link_to_wallet: str) -> str:
     buffer.seek(0)
     return "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode("utf-8")
 
-
-def retrieve_request_object_with_document_signing_request(nonce: str) -> str:
+def retrieve_request_object_with_document_signing_request(nonce: str):
     try:
         request_object = get_request_object_from_db(nonce)
     except ValueError as e:
-        app.logger.error(f"An error was caught while trying to save the Request Object to the Database: {e}.")
+        app.logger.error(f"An error was caught while trying to retrieve the Request Object to the Database: {e}.")
         raise
 
     if request_object is None:
         app.logger.info(f"No Request Object found for nonce {nonce}.")
+        add_error_log(nonce, "Request Object with given nonce was not found.")
         return None
 
     return request_object
-
-
 
 def retrieve_signed_objects(nonce: str):
     try:
