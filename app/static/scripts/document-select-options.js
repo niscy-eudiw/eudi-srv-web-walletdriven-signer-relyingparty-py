@@ -5,7 +5,7 @@ const documentStates = new Map();
     container: "No",
     signature_format: null,
     packaging: null,
-    level: "Ades-B-B",
+    level: "AdES-B-B",
     confirmed: false,
     file: null,
     fileURL: null,
@@ -115,6 +115,7 @@ const documentStates = new Map();
     if (state.container) onChangeContainer(state.container, false);
     if (state.signature_format)
       onChangeSignatureFormat(state.signature_format, false);
+    else showPackagingOptions([]);
 
     if (state.fileURL) {
       showPreview(state);
@@ -131,6 +132,7 @@ const documentStates = new Map();
     if (resetChildren) {
       deselectSignatureFormat();
       deselectPackaging();
+      showPackagingOptions([]);
     }
     saveOption("container", value);
 
@@ -141,11 +143,44 @@ const documentStates = new Map();
     document.getElementById("CAdES").disabled = false;
   }
 
+  const PACKAGING_IDS = [
+    "detached",
+    "attached",
+    "parallel",
+    "certification",
+    "revision",
+    "enveloped",
+    "enveloping",
+  ];
+
+  const PACKAGING_BY_FORMAT = {
+    C: ["attached", "detached", "parallel"],
+    P: ["certification", "revision"],
+    X: ["enveloped", "enveloping", "detached"],
+    J: ["detached", "attached", "parallel"],
+  };
+
+  // Packaging pre-selected when a signature format is chosen
+  const DEFAULT_PACKAGING_BY_FORMAT = {
+    C: "attached",
+    P: "certification",
+    X: "enveloped",
+    J: "attached",
+  };
+
+  function selectPackaging(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.checked = true;
+    saveOption("packaging", el.value);
+  }
+
   function deselectPackaging() {
-    ["enveloped", "enveloping", "detached", "internally"].forEach((id) => {
+    PACKAGING_IDS.forEach((id) => {
       const el = document.getElementById(id);
-      if (el && !el.disabled) el.checked = false;
+      if (el) el.checked = false;
     });
+    saveOption("packaging", null);
   }
 
   function deselectSignatureFormat() {
@@ -166,26 +201,20 @@ const documentStates = new Map();
       form.querySelector("input[name='container']:checked")?.value || "No";
     const isASiC = container === "ASiC-S" || container === "ASiC-E";
 
-    if (value === "X") {
-      isASiC
-        ? setPackagingState(false, false, true, false)
-        : setPackagingState(true, true, true, true);
-    } else if (value === "C") {
-      isASiC
-        ? setPackagingState(false, false, true, false)
-        : setPackagingState(false, true, true, false);
-    } else if (value === "P") {
-      setPackagingState(true, false, false, false);
-    } else if (value === "J") {
-      setPackagingState(false, true, true, false);
+    // ASiC containers only support detached XAdES/CAdES signatures
+    showPackagingOptions(isASiC ? ["detached"] : PACKAGING_BY_FORMAT[value]);
+
+    if (resetChildren) {
+      selectPackaging(isASiC ? "detached" : DEFAULT_PACKAGING_BY_FORMAT[value]);
     }
   }
 
-  function setPackagingState(enveloped, enveloping, detached, internally) {
-    document.getElementById("enveloped").disabled = !enveloped;
-    document.getElementById("enveloping").disabled = !enveloping;
-    document.getElementById("detached").disabled = !detached;
-    document.getElementById("internally").disabled = !internally;
+  function showPackagingOptions(visibleIds = []) {
+    PACKAGING_IDS.forEach((id) => {
+      document.getElementById(id).closest("label").hidden =
+        !visibleIds.includes(id);
+    });
+    document.getElementById("packaging-hint").hidden = visibleIds.length > 0;
   }
 
   function showPreview(state) {

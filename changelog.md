@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.3.1]
+
+_9 Oct 2026_
+
+### Changed:
+
+- Updated document retrieval request object (JAR) `typ` header to `oauth-authz-req+jwt`, as expected by OpenID4VP.
+- Updated document retrieval `signed_envelope_property` and `conformance_level` values to align with the CSC Data Model v1.0.0.
+
 ## [0.3.0]
 
 _2 Oct 2026_

@@ -32,7 +32,7 @@ def _get_document_retrieval_params(wallet_url: str, documents: list[DocumentSign
     request_object, client_id = builder.build()
 
     if request_object_delivery == "request_uri":
-        link_to_wallet = _build_request_uri_link(wallet_url=wallet_url, nonce=nonce, request_object=request_object, client_id=client_id)
+        link_to_wallet = _build_request_uri_link(wallet_url=wallet_url, nonce=nonce, request_object=request_object, client_id=client_id, protocol_version=protocol_version)
     else:
         link_to_wallet = _build_direct_params_link(wallet_url=wallet_url, request_object=request_object)
     return link_to_wallet, nonce
@@ -51,8 +51,8 @@ def _get_request_builder(protocol_version: str, nonce: str, documents: list[Docu
         raise ValueError(f"Unsupported protocol_version.")
     return builder
 
-def _build_request_uri_link(wallet_url: str, nonce: str, request_object: dict, client_id: str) -> str:
-    jar = _get_jar_from_request_object(request_object)
+def _build_request_uri_link(wallet_url: str, nonce: str, request_object: dict, client_id: str, protocol_version: str) -> str:
+    jar = _get_jar_from_request_object(request_object, protocol_version)
     app.logger.info("Generated the Request Object Value.")
 
     db.add_to_request_object_to_table(nonce, jar)
@@ -61,13 +61,16 @@ def _build_request_uri_link(wallet_url: str, nonce: str, request_object: dict, c
     request_uri = url_for("wallet.retrieve_request_object", nonce=nonce, _external=True, _scheme=settings.SERVICE_SCHEME)
     return f"{wallet_url}?request_uri={quote(request_uri, safe='')}&client_id={client_id}"
 
-def _get_jar_from_request_object(request_object: dict) -> str:
+def _get_jar_from_request_object(request_object: dict, protocol_version: str) -> str:
     private_key = get_jwt_private_key()
     certificate_chain = [get_jwt_certificate()]
     ca_certificate = get_jwt_ca_certificate()
     if ca_certificate:
         certificate_chain.append(ca_certificate)
+        
     headers = {"x5c":certificate_chain}
+    if protocol_version == "etsi119432":
+        headers.update({"typ": "application/oauth-authz-req+jwt"})
     token = jwt.encode(request_object, private_key, algorithm=settings.JWT_ALGORITHM, headers=headers)
     app.logger.info("Generated a JWT with the Request Object.")
     return token

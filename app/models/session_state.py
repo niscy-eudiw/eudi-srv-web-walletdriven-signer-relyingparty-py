@@ -10,9 +10,10 @@ class DocumentSigningOptions(BaseModel):
     filepath: Path
     filename: str
     signature_format:  Literal["X", "P", "C", "J"]
-    conformance_level: Literal["Ades-B-B", "Ades-B-T", "Ades-B-LT", "Ades-B-LTA"]
+    conformance_level: Literal["AdES-B-B", "AdES-B-T", "AdES-B-LT", "AdES-B-LTA", "AdES-B", "AdES-T", "AdES-LT", "AdES-LTA"]
 
     container:  Literal["No", "ASiC-S", "ASiC-E"]
-    packaging: Literal["ENVELOPED", "ENVELOPING", "DETACHED", "INTERNALLY_DETACHED"]
-
+    packaging: Literal["Detached", "Attached", "Parallel",
+                       "Certification", "Revision", 
+                       "Enveloped", "Enveloping"]
     url: str
