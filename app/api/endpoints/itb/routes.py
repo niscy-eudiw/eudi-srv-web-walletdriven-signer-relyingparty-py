@@ -22,7 +22,7 @@ def get_document_for_signature():
             container="No",
             signature_format="P",
             packaging="ENVELOPED",
-            conformance_level="Ades-B-B",
+            conformance_level="AdES-B-B",
             url= url_for('documents.serve_docs', filename="sample.pdf", _external=True, _scheme=settings.SERVICE_SCHEME)
         )
     ]

@@ -122,41 +122,71 @@
             <p class="legend" style="margin-bottom: 5px; font-weight: bold">
               Packaging
             </p>
-            <label
-              ><input
-                type="radio"
-                id="enveloped"
-                name="packaging"
-                value="ENVELOPED"
-                onchange="saveOption('packaging', this.value)"
-              />Enveloped</label
-            >
-            <label
-              ><input
-                type="radio"
-                id="enveloping"
-                name="packaging"
-                value="ENVELOPING"
-                onchange="saveOption('packaging', this.value)"
-              />Enveloping</label
-            >
-            <label
+            <p id="packaging-hint" style="margin: 0">
+              Select a signature format first.
+            </p>
+            <label hidden
               ><input
                 type="radio"
                 id="detached"
                 name="packaging"
-                value="DETACHED"
+                value="Detached"
                 onchange="saveOption('packaging', this.value)"
               />Detached</label
             >
-            <label
+            <label hidden
               ><input
                 type="radio"
-                id="internally"
+                id="attached"
                 name="packaging"
-                value="INTERNALLY_DETACHED"
+                value="Attached"
                 onchange="saveOption('packaging', this.value)"
-              />Internally Detached</label
+              />Attached</label
+            >
+            <label hidden
+              ><input
+                type="radio"
+                id="parallel"
+                name="packaging"
+                value="Parallel"
+                onchange="saveOption('packaging', this.value)"
+              />Parallel</label
+            >
+            <label hidden
+              ><input
+                type="radio"
+                id="certification"
+                name="packaging"
+                value="Certification"
+                onchange="saveOption('packaging', this.value)"
+              />Certification</label
+            >
+            <label hidden
+              ><input
+                type="radio"
+                id="revision"
+                name="packaging"
+                value="Revision"
+                onchange="saveOption('packaging', this.value)"
+              />Revision</label
+            >
+            <label hidden
+              ><input
+                type="radio"
+                id="enveloped"
+                name="packaging"
+                value="Enveloped"
+                onchange="saveOption('packaging', this.value)"
+              />Enveloped</label
+            >
+            <label hidden
+              ><input
+                type="radio"
+                id="enveloping"
+                name="packaging"
+                value="Enveloping"
+                onchange="saveOption('packaging', this.value)"
+              />Enveloping</label
             >
           </div>
         </div>
@@ -174,7 +204,7 @@
               ><input
                 type="radio"
                 name="level"
-                value="Ades-B-B"
+                value="AdES-B-B"
                 onchange="saveOption('level', this.value)"
               />BASELINE-B</label
             >
@@ -182,7 +212,7 @@
               ><input
                 type="radio"
                 name="level"
-                value="Ades-B-T"
+                value="AdES-B-T"
                 onchange="saveOption('level', this.value)"
               />BASELINE-T</label
             >
@@ -190,7 +220,7 @@
               ><input
                 type="radio"
                 name="level"
-                value="Ades-B-LT"
+                value="AdES-B-LT"
                 onchange="saveOption('level', this.value)"
               />BASELINE-LT</label
             >
@@ -198,7 +228,7 @@
               ><input
                 type="radio"
                 name="level"
-                value="Ades-B-LTA"
+                value="AdES-B-LTA"
                 onchange="saveOption('level', this.value)"
               />BASELINE-LTA</label
             >

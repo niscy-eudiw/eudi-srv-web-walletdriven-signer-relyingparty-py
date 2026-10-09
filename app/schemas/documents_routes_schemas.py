@@ -5,8 +5,10 @@ class SigningOptions(BaseModel):
     filename: str
     container: Literal["No", "ASiC-S", "ASiC-E"]
     signature_format: Literal["X", "P", "C", "J"]
-    packaging: Literal["ENVELOPED", "ENVELOPING", "DETACHED", "INTERNALLY_DETACHED"]
-    level: Literal["Ades-B-B", "Ades-B-T", "Ades-B-LT", "Ades-B-LTA"]
+    packaging: Literal["Detached", "Attached", "Parallel",
+                       "Certification", "Revision", 
+                       "Enveloped", "Enveloping"]
+    level: Literal["AdES-B-B", "AdES-B-T", "AdES-B-LT", "AdES-B-LTA"]    
 
     @field_validator("filename")
     @classmethod
